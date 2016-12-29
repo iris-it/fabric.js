@@ -349,16 +349,17 @@
     /* proptotype */
     bulletMap: [],
 
-    getBulletSpace: function() {
-      return 20;
+    getBulletSpace: function(lineIndex) {
+      var bulletLevel = this.isLineBullet(lineIndex) || 0;
+      return bulletLevel * 2 * this.fontSize;
     },
 
-    getBulletText: function(i) {
-      return i ? '' : '@';
+    getBulletText: function() {
+      return '\u2022';
     },
 
-    isLineBullet: function(i, rawLine) {
-      return rawLine ? this.bulletMap[i] : this.bulletMapWrap[i];
+    isLineBullet: function() {
+      return false;
     },
 
     /**
@@ -470,10 +471,10 @@
      * @return {Number} Maximum width of fabric.Text object
      */
     _getTextWidth: function(ctx) {
-      var maxWidth = this._getLineWidth(ctx, 0);
+      var maxWidth = this._getLineWidth(ctx, 0) + this.getBulletSpace(0);
 
       for (var i = 1, len = this._textLines.length; i < len; i++) {
-        var currentLineWidth = this._getLineWidth(ctx, i);
+        var currentLineWidth = this._getLineWidth(ctx, i) + this.getBulletSpace(i);
         if (currentLineWidth > maxWidth) {
           maxWidth = currentLineWidth;
         }
@@ -533,7 +534,8 @@
       var lineWidth = this._getLineWidth(ctx, lineIndex);
       if (this.textAlign !== 'justify' || this.width < lineWidth) {
         if (this.isLineBullet(lineIndex)) {
-          left += this.getBulletSpace();
+          this._renderChars(method, ctx, this.getBulletText(lineIndex), left, top, lineIndex);
+          left += this.getBulletSpace(lineIndex);
         }
         this._renderChars(method, ctx, line, left, top, lineIndex);
         return;

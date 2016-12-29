@@ -693,10 +693,8 @@ fabric.Collection = {
         var klass = fabric.util.getKlass(o.type, namespace);
         if (klass.async) {
           klass.fromObject(o, function (obj, error) {
-            if (!error) {
-              enlivenedObjects[index] = obj;
-              reviver && reviver(o, enlivenedObjects[index]);
-            }
+            error || (enlivenedObjects[index] = obj);
+            reviver && reviver(o, obj, error);
             onLoaded();
           });
         }
@@ -6522,7 +6520,7 @@ fabric.Pattern = fabric.util.createClass(/** @lends fabric.Pattern.prototype */ 
      * @private
      */
     _createCanvasElement: function(canvasEl) {
-      var element = fabric.util.createCanvasElement(canvasEl)
+      var element = fabric.util.createCanvasElement(canvasEl);
       if (!element.style) {
         element.style = { };
       }
@@ -6847,7 +6845,7 @@ fabric.Pattern = fabric.util.createClass(/** @lends fabric.Pattern.prototype */ 
       this.backgroundImage = null;
       this.overlayImage = null;
       this.backgroundColor = '';
-      this.overlayColor = ''
+      this.overlayColor = '';
       if (this._hasITextHandlers) {
         this.off('selection:cleared', this._canvasITextSelectionClearedHanlder);
         this.off('object:selected', this._canvasITextSelectionClearedHanlder);
@@ -7146,12 +7144,12 @@ fabric.Pattern = fabric.util.createClass(/** @lends fabric.Pattern.prototype */ 
      * @private
      */
     __serializeBgOverlay: function(methodName, propertiesToInclude) {
-      var data = { }
+      var data = { };
 
       if (this.backgroundColor) {
         data.background = this.backgroundColor.toObject
           ? this.backgroundColor.toObject(propertiesToInclude)
-          : this.backgroundColor
+          : this.backgroundColor;
       }
 
       if (this.overlayColor) {
@@ -10221,7 +10219,7 @@ fabric.PatternBrush = fabric.util.createClass(fabric.PencilBrush, /** @lends fab
      */
     _onContextMenu: function (e) {
       if (this.stopContextMenu) {
-        e.stopPropagation()
+        e.stopPropagation();
         e.preventDefault();
       }
       return false;
@@ -10301,7 +10299,7 @@ fabric.PatternBrush = fabric.util.createClass(fabric.PencilBrush, /** @lends fab
     _shouldRender: function(target, pointer) {
       var activeObject = this.getActiveGroup() || this.getActiveObject();
 
-      if (activeObject && activeObject.isEditing) {
+      if (activeObject && activeObject.isEditing && target === activeObject) {
         // if we mouse up/down over a editing textbox a cursor change,
         // there is no need to re render
         return false;
@@ -10483,7 +10481,7 @@ fabric.PatternBrush = fabric.util.createClass(fabric.PencilBrush, /** @lends fab
     },
 
     /**
-     * Method that defines the actions when mouse is clic ked on canvas.
+     * Method that defines the actions when mouse is clicked on canvas.
      * The method inits the currentTransform parameters and renders all the
      * canvas so the current image can be placed on the top canvas and the rest
      * in on the container one.
@@ -11297,8 +11295,8 @@ fabric.util.object.extend(fabric.StaticCanvas.prototype, /** @lends fabric.Stati
     }
 
     if (property === 'backgroundImage' || property === 'overlayImage') {
-      fabric.Image.fromObject(value, function(img) {
-        _this[property] = img;
+      fabric.util.enlivenObjects([value], function(enlivedObject){
+        _this[property] = enlivedObject[0];
         loaded[property] = true;
         callback && callback();
       });
@@ -11931,7 +11929,7 @@ fabric.util.object.extend(fabric.StaticCanvas.prototype, /** @lends fabric.Stati
     globalCompositeOperation: 'source-over',
 
     /**
-     * Background color of an object. Only works with text objects at the moment.
+     * Background color of an object.
      * @type String
      * @default
      */
@@ -12301,9 +12299,9 @@ fabric.util.object.extend(fabric.StaticCanvas.prototype, /** @lends fabric.Stati
         this.cacheHeight = height;
         this.zoomX = zoomX;
         this.zoomY = zoomY;
-        return true
+        return true;
       }
-      return false
+      return false;
     },
 
     /**
@@ -12547,10 +12545,16 @@ fabric.util.object.extend(fabric.StaticCanvas.prototype, /** @lends fabric.Stati
       else if (key === 'shadow' && value && !(value instanceof fabric.Shadow)) {
         value = new fabric.Shadow(value);
       }
+      else if (key === 'dirty' && this.group) {
+        this.group.set('dirty', value);
+      }
 
       this[key] = value;
 
       if (this.cacheProperties.indexOf(key) > -1) {
+        if (this.group) {
+          this.group.set('dirty', true);
+        }
         this.dirty = true;
       }
 
@@ -14240,14 +14244,14 @@ fabric.util.object.extend(fabric.Object.prototype, /** @lends fabric.Object.prot
     }
     else if (origValue instanceof Array) {
       if (origValue.length !== currentValue.length) {
-        return false
+        return false;
       }
       for (var i = 0, len = origValue.length; i < len; i++) {
         if (origValue[i] !== currentValue[i]) {
           return false;
         }
       }
-      return true
+      return true;
     }
     else if (origValue && typeof origValue === 'object') {
       if (!firstPass && Object.keys(origValue).length !== Object.keys(currentValue).length) {
@@ -17104,7 +17108,7 @@ fabric.util.object.extend(fabric.Object.prototype, /** @lends fabric.Object.prot
      */
     toObject: function(propertiesToInclude) {
       var o = extend(this.callSuper('toObject', ['sourcePath', 'pathOffset'].concat(propertiesToInclude)), {
-        path: this.path.map(function(item) { return item.slice() })
+        path: this.path.map(function(item) { return item.slice(); })
       });
       return o;
     },
@@ -17713,7 +17717,7 @@ fabric.util.object.extend(fabric.Object.prototype, /** @lends fabric.Object.prot
      */
     isCacheDirty: function() {
       if (this.callSuper('isCacheDirty')) {
-        return true
+        return true;
       }
       if (!this.statefullCache) {
         return false;
@@ -17722,7 +17726,7 @@ fabric.util.object.extend(fabric.Object.prototype, /** @lends fabric.Object.prot
         if (this.paths[i].isCacheDirty(true)) {
           var dim = this._getNonTransformedDimensions();
           this._cacheContext.clearRect(-dim.x / 2, -dim.y / 2, dim.x, dim.y);
-          return true
+          return true;
         }
       }
       return false;
@@ -18187,7 +18191,7 @@ fabric.util.object.extend(fabric.Object.prototype, /** @lends fabric.Object.prot
      */
     isCacheDirty: function() {
       if (this.callSuper('isCacheDirty')) {
-        return true
+        return true;
       }
       if (!this.statefullCache) {
         return false;
@@ -18196,7 +18200,7 @@ fabric.util.object.extend(fabric.Object.prototype, /** @lends fabric.Object.prot
         if (this._objects[i].isCacheDirty(true)) {
           var dim = this._getNonTransformedDimensions();
           this._cacheContext.clearRect(-dim.x / 2, -dim.y / 2, dim.x, dim.y);
-          return true
+          return true;
         }
       }
       return false;
@@ -19093,7 +19097,11 @@ fabric.util.object.extend(fabric.Object.prototype, /** @lends fabric.Object.prot
    * @param {Function} callback Callback to invoke when an image instance is created
    */
   fabric.Image.fromObject = function(object, callback) {
-    fabric.util.loadImage(object.src, function(img) {
+    fabric.util.loadImage(object.src, function(img, error) {
+      if (error) {
+        callback && callback(null, error);
+        return;
+      }
       fabric.Image.prototype._initFilters.call(object, object.filters, function(filters) {
         object.filters = filters || [];
         fabric.Image.prototype._initFilters.call(object, object.resizeFilters, function(resizeFilters) {
@@ -21677,6 +21685,22 @@ fabric.Image.filters.BaseFilter = fabric.util.createClass(/** @lends fabric.Imag
      */
     charSpacing:             0,
 
+    /* proptotype */
+    bulletMap: [],
+
+    getBulletSpace: function(lineIndex) {
+      var bulletLevel = this.isLineBullet(lineIndex) || 0;
+      return bulletLevel * 2 * this.fontSize;
+    },
+
+    getBulletText: function() {
+      return '\u2022';
+    },
+
+    isLineBullet: function() {
+      return false;
+    },
+
     /**
      * Constructor
      * @param {String} text Text string
@@ -21786,10 +21810,10 @@ fabric.Image.filters.BaseFilter = fabric.util.createClass(/** @lends fabric.Imag
      * @return {Number} Maximum width of fabric.Text object
      */
     _getTextWidth: function(ctx) {
-      var maxWidth = this._getLineWidth(ctx, 0);
+      var maxWidth = this._getLineWidth(ctx, 0) + this.getBulletSpace(0);
 
       for (var i = 1, len = this._textLines.length; i < len; i++) {
-        var currentLineWidth = this._getLineWidth(ctx, i);
+        var currentLineWidth = this._getLineWidth(ctx, i) + this.getBulletSpace(i);
         if (currentLineWidth > maxWidth) {
           maxWidth = currentLineWidth;
         }
@@ -21848,6 +21872,10 @@ fabric.Image.filters.BaseFilter = fabric.util.createClass(/** @lends fabric.Imag
       // short-circuit
       var lineWidth = this._getLineWidth(ctx, lineIndex);
       if (this.textAlign !== 'justify' || this.width < lineWidth) {
+        if (this.isLineBullet(lineIndex)) {
+          this._renderChars(method, ctx, this.getBulletText(lineIndex), left, top, lineIndex);
+          left += this.getBulletSpace(lineIndex);
+        }
         this._renderChars(method, ctx, line, left, top, lineIndex);
         return;
       }
@@ -22044,13 +22072,8 @@ fabric.Image.filters.BaseFilter = fabric.util.createClass(/** @lends fabric.Imag
      * @private
      */
     _shouldClearDimensionCache: function() {
-      var shouldClear = false;
-      if (this._forceClearCache) {
-        this._forceClearCache = false;
-        this.dirty = true;
-        return true;
-      }
-      shouldClear = this.hasStateChanged('_dimensionAffectingProps');
+      var shouldClear = this._forceClearCache;
+      shouldClear || (shouldClear = this.hasStateChanged('_dimensionAffectingProps'));
       if (shouldClear) {
         this.saveState({ propertySet: '_dimensionAffectingProps' });
         this.dirty = true;
@@ -22716,6 +22739,11 @@ fabric.Image.filters.BaseFilter = fabric.util.createClass(/** @lends fabric.Imag
      */
     __widthOfSpace: [],
 
+    isLineBullet: function(i) {
+      var lineStyle = this.styles[i];
+      return lineStyle ? lineStyle.bulletLevel : false;
+    },
+
     /**
      * Constructor
      * @param {String} text Text string
@@ -22747,9 +22775,11 @@ fabric.Image.filters.BaseFilter = fabric.util.createClass(/** @lends fabric.Imag
 
       for (var p1 in obj) {
         for (var p2 in obj[p1]) {
-          // eslint-disable-next-line no-unused-vars
-          for (var p3 in obj[p1][p2]) {
-            return false;
+          if (p2 !== 'bulletLevel') {
+            // eslint-disable-next-line no-unused-vars
+            for (var p3 in obj[p1][p2]) {
+              return false;
+            }
           }
         }
       }
@@ -23585,7 +23615,7 @@ fabric.Image.filters.BaseFilter = fabric.util.createClass(/** @lends fabric.Imag
         width += this._getWidthOfCharSpacing();
       }
       ctx.restore();
-      return width > 0 ? width : 0
+      return width > 0 ? width : 0;
     },
 
     /**
@@ -25483,6 +25513,7 @@ fabric.util.object.extend(fabric.IText.prototype, /** @lends fabric.IText.protot
       this._removeCharsFromTo(this.selectionStart, this.selectionEnd);
     }
 
+    this.set('dirty', true);
     this.setSelectionEnd(this.selectionStart);
 
     this._removeExtraneousStyles();
@@ -25867,12 +25898,17 @@ fabric.util.object.extend(fabric.IText.prototype, /** @lends fabric.IText.protot
      * @returns {Array} Array of lines
      */
     _wrapText: function(ctx, text) {
-      var lines = text.split(this._reNewline), wrapped = [], i;
+      var lines = text.split(this._reNewline), wrapped = [], i, wrappedLines, lineIsBullet, j;
+      this.bulletMapWrap = [];
 
       for (i = 0; i < lines.length; i++) {
-        wrapped = wrapped.concat(this._wrapLine(ctx, lines[i], i));
+        lineIsBullet = this.isLineBullet(i, true);
+        wrappedLines = this._wrapLine(ctx, lines[i], i, lineIsBullet);
+        wrapped = wrapped.concat(wrappedLines);
+        for (j = 0; j < wrappedLines.length; j++) {
+          this.bulletMapWrap.push(lineIsBullet);
+        }
       }
-
       return wrapped;
     },
 
@@ -25895,6 +25931,19 @@ fabric.util.object.extend(fabric.IText.prototype, /** @lends fabric.IText.protot
       return width;
     },
 
+    getBulletSpace: function(lineIndex, wrapped) {
+      var bulletLevel = this.isLineBullet(lineIndex, wrapped);
+      return bulletLevel * 2 * this.fontSize;
+    },
+
+    getBulletText: function(i) {
+      return i ? '' : '@';
+    },
+
+    isLineBullet: function(i, wrappedLine) {
+      return wrappedLine ? this.bulletMapWrap[i] : this.bulletMap[i];
+    },
+
     /**
      * Wraps a line of text using the width of the Textbox and a context.
      * @param {CanvasRenderingContext2D} ctx Context to use for measurements
@@ -25904,7 +25953,8 @@ fabric.util.object.extend(fabric.IText.prototype, /** @lends fabric.IText.protot
      * to.
      */
     _wrapLine: function(ctx, text, lineIndex) {
-      var lineWidth        = 0,
+      var bulletSpace      = this.getBulletSpace(lineIndex),
+          lineWidth        = bulletSpace,
           lines            = [],
           line             = '',
           words            = text.split(' '),
@@ -25928,7 +25978,7 @@ fabric.util.object.extend(fabric.IText.prototype, /** @lends fabric.IText.protot
         if (lineWidth >= this.width && !lineJustStarted) {
           lines.push(line);
           line = '';
-          lineWidth = wordWidth;
+          lineWidth = wordWidth + bulletSpace;
           lineJustStarted = true;
         }
         else {
@@ -26043,9 +26093,9 @@ fabric.util.object.extend(fabric.IText.prototype, /** @lends fabric.IText.protot
      * @returns {Object} Object with 'top', 'left', and 'lineLeft' properties set.
      */
     _getCursorBoundariesOffsets: function(chars, typeOfBoundaries) {
-      var topOffset      = 0,
-          leftOffset     = 0,
-          cursorLocation = this.get2DCursorLocation(),
+      var cursorLocation = this.get2DCursorLocation(),
+          topOffset      = 0,
+          leftOffset     = this.isLineBullet(cursorLocation.lineIndex) ? this.getBulletSpace() : 0,
           lineChars      = this._textLines[cursorLocation.lineIndex].split(''),
           lineLeftOffset = this._getLineLeftOffset(this._getLineWidth(this.ctx, cursorLocation.lineIndex));
 
@@ -26483,7 +26533,7 @@ fabric.util.object.extend(fabric.IText.prototype, /** @lends fabric.IText.protot
     this.contextContainer = this.nodeCanvas.getContext('2d');
     this.contextCache = this.nodeCacheCanvas.getContext('2d');
     this.Font = Canvas.Font;
-  }
+  };
 
   /** @ignore */
   fabric.StaticCanvas.prototype.createPNGStream = function() {

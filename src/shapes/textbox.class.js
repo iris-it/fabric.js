@@ -263,16 +263,17 @@
       return width;
     },
 
-    getBulletSpace: function() {
-      return 20;
+    getBulletSpace: function(lineIndex, wrapped) {
+      var bulletLevel = this.isLineBullet(lineIndex, wrapped);
+      return bulletLevel * 2 * this.fontSize;
     },
 
     getBulletText: function(i) {
       return i ? '' : '@';
     },
 
-    isLineBullet: function(i, rawLine) {
-      return rawLine ? this.bulletMap[i] : this.bulletMapWrap[i];
+    isLineBullet: function(i, wrappedLine) {
+      return wrappedLine ? this.bulletMapWrap[i] : this.bulletMap[i];
     },
 
     /**
@@ -283,8 +284,9 @@
      * @returns {Array} Array of line(s) into which the given text is wrapped
      * to.
      */
-    _wrapLine: function(ctx, text, lineIndex, bullet) {
-      var lineWidth        = bullet ? 0 : this.getBulletSpace(),
+    _wrapLine: function(ctx, text, lineIndex) {
+      var bulletSpace      = this.getBulletSpace(lineIndex),
+          lineWidth        = bulletSpace,
           lines            = [],
           line             = '',
           words            = text.split(' '),
@@ -308,7 +310,7 @@
         if (lineWidth >= this.width && !lineJustStarted) {
           lines.push(line);
           line = '';
-          lineWidth = wordWidth + bullet ? 0 : this.getBulletSpace();
+          lineWidth = wordWidth + bulletSpace;
           lineJustStarted = true;
         }
         else {

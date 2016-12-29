@@ -167,6 +167,11 @@
      */
     __widthOfSpace: [],
 
+    isLineBullet: function(i) {
+      var lineStyle = this.styles[i];
+      return lineStyle ? lineStyle.bulletLevel : false;
+    },
+
     /**
      * Constructor
      * @param {String} text Text string
@@ -198,9 +203,11 @@
 
       for (var p1 in obj) {
         for (var p2 in obj[p1]) {
-          // eslint-disable-next-line no-unused-vars
-          for (var p3 in obj[p1][p2]) {
-            return false;
+          if (p2 !== 'bulletLevel') {
+            // eslint-disable-next-line no-unused-vars
+            for (var p3 in obj[p1][p2]) {
+              return false;
+            }
           }
         }
       }
