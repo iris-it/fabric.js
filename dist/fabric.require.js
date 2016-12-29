@@ -320,8 +320,10 @@ fabric.Collection = {
                 var klass = fabric.util.getKlass(o.type, namespace);
                 if (klass.async) {
                     klass.fromObject(o, function(obj, error) {
-                        error || (enlivenedObjects[index] = obj);
-                        reviver && reviver(o, obj, error);
+                        if (!error) {
+                            enlivenedObjects[index] = obj;
+                            reviver && reviver(o, enlivenedObjects[index]);
+                        }
                         onLoaded();
                     });
                 } else {
@@ -5222,7 +5224,7 @@ fabric.PatternBrush = fabric.util.createClass(fabric.PencilBrush, {
         },
         _shouldRender: function(target, pointer) {
             var activeObject = this.getActiveGroup() || this.getActiveObject();
-            if (activeObject && activeObject.isEditing && target === activeObject) {
+            if (activeObject && activeObject.isEditing) {
                 return false;
             }
             return !!(target && (target.isMoving || target !== activeObject) || !target && !!activeObject || !target && !activeObject && !this._groupSelector || pointer && this._previousPointer && this.selection && (pointer.x !== this._previousPointer.x || pointer.y !== this._previousPointer.y));
@@ -5750,8 +5752,8 @@ fabric.util.object.extend(fabric.StaticCanvas.prototype, {
             return;
         }
         if (property === "backgroundImage" || property === "overlayImage") {
-            fabric.util.enlivenObjects([ value ], function(enlivedObject) {
-                _this[property] = enlivedObject[0];
+            fabric.Image.fromObject(value, function(img) {
+                _this[property] = img;
                 loaded[property] = true;
                 callback && callback();
             });
@@ -6085,14 +6087,9 @@ fabric.util.object.extend(fabric.StaticCanvas.prototype, {
                 value *= -1;
             } else if (key === "shadow" && value && !(value instanceof fabric.Shadow)) {
                 value = new fabric.Shadow(value);
-            } else if (key === "dirty" && this.group) {
-                this.group.set("dirty", value);
             }
             this[key] = value;
             if (this.cacheProperties.indexOf(key) > -1) {
-                if (this.group) {
-                    this.group.set("dirty", true);
-                }
                 this.dirty = true;
             }
             if (key === "width" || key === "height") {
@@ -9199,11 +9196,7 @@ fabric.util.object.extend(fabric.Object.prototype, {
     fabric.Image.CSS_CANVAS = "canvas-img";
     fabric.Image.prototype.getSvgSrc = fabric.Image.prototype.getSrc;
     fabric.Image.fromObject = function(object, callback) {
-        fabric.util.loadImage(object.src, function(img, error) {
-            if (error) {
-                callback && callback(null, error);
-                return;
-            }
+        fabric.util.loadImage(object.src, function(img) {
             fabric.Image.prototype._initFilters.call(object, object.filters, function(filters) {
                 object.filters = filters || [];
                 fabric.Image.prototype._initFilters.call(object, object.resizeFilters, function(resizeFilters) {
@@ -10153,17 +10146,6 @@ fabric.Image.filters.BaseFilter = fabric.util.createClass({
         _fontSizeFraction: .25,
         _fontSizeMult: 1.13,
         charSpacing: 0,
-        bulletMap: [],
-        getBulletSpace: function(lineIndex) {
-            var bulletLevel = this.isLineBullet(lineIndex) || 0;
-            return bulletLevel * 2 * this.fontSize;
-        },
-        getBulletText: function() {
-            return "•";
-        },
-        isLineBullet: function() {
-            return false;
-        },
         initialize: function(text, options) {
             options = options || {};
             this.text = text;
@@ -10218,9 +10200,9 @@ fabric.Image.filters.BaseFilter = fabric.util.createClass({
             return this._getHeightOfSingleLine() + (this._textLines.length - 1) * this._getHeightOfLine();
         },
         _getTextWidth: function(ctx) {
-            var maxWidth = this._getLineWidth(ctx, 0) + this.getBulletSpace(0);
+            var maxWidth = this._getLineWidth(ctx, 0);
             for (var i = 1, len = this._textLines.length; i < len; i++) {
-                var currentLineWidth = this._getLineWidth(ctx, i) + this.getBulletSpace(i);
+                var currentLineWidth = this._getLineWidth(ctx, i);
                 if (currentLineWidth > maxWidth) {
                     maxWidth = currentLineWidth;
                 }
@@ -10254,10 +10236,6 @@ fabric.Image.filters.BaseFilter = fabric.util.createClass({
             top -= this.fontSize * this._fontSizeFraction;
             var lineWidth = this._getLineWidth(ctx, lineIndex);
             if (this.textAlign !== "justify" || this.width < lineWidth) {
-                if (this.isLineBullet(lineIndex)) {
-                    this._renderChars(method, ctx, this.getBulletText(lineIndex), left, top, lineIndex);
-                    left += this.getBulletSpace(lineIndex);
-                }
                 this._renderChars(method, ctx, line, left, top, lineIndex);
                 return;
             }
@@ -10356,8 +10334,13 @@ fabric.Image.filters.BaseFilter = fabric.util.createClass({
             this.__lineHeights = [];
         },
         _shouldClearDimensionCache: function() {
-            var shouldClear = this._forceClearCache;
-            shouldClear || (shouldClear = this.hasStateChanged("_dimensionAffectingProps"));
+            var shouldClear = false;
+            if (this._forceClearCache) {
+                this._forceClearCache = false;
+                this.dirty = true;
+                return true;
+            }
+            shouldClear = this.hasStateChanged("_dimensionAffectingProps");
             if (shouldClear) {
                 this.saveState({
                     propertySet: "_dimensionAffectingProps"
@@ -10605,10 +10588,6 @@ fabric.Image.filters.BaseFilter = fabric.util.createClass({
         _selectionDirection: null,
         _abortCursorAnimation: false,
         __widthOfSpace: [],
-        isLineBullet: function(i) {
-            var lineStyle = this.styles[i];
-            return lineStyle ? lineStyle.bulletLevel : false;
-        },
         initialize: function(text, options) {
             this.styles = options ? options.styles || {} : {};
             this.callSuper("initialize", text, options);
@@ -10625,10 +10604,8 @@ fabric.Image.filters.BaseFilter = fabric.util.createClass({
             var obj = this.styles;
             for (var p1 in obj) {
                 for (var p2 in obj[p1]) {
-                    if (p2 !== "bulletLevel") {
-                        for (var p3 in obj[p1][p2]) {
-                            return false;
-                        }
+                    for (var p3 in obj[p1][p2]) {
+                        return false;
                     }
                 }
             }
@@ -12206,7 +12183,6 @@ fabric.util.object.extend(fabric.IText.prototype, {
         } else {
             this._removeCharsFromTo(this.selectionStart, this.selectionEnd);
         }
-        this.set("dirty", true);
         this.setSelectionEnd(this.selectionStart);
         this._removeExtraneousStyles();
         this.canvas && this.canvas.renderAll();
@@ -12374,15 +12350,9 @@ fabric.util.object.extend(fabric.IText.prototype, {
             delete this.styles[map.line];
         },
         _wrapText: function(ctx, text) {
-            var lines = text.split(this._reNewline), wrapped = [], i, wrappedLines, lineIsBullet, j;
-            this.bulletMapWrap = [];
+            var lines = text.split(this._reNewline), wrapped = [], i;
             for (i = 0; i < lines.length; i++) {
-                lineIsBullet = this.isLineBullet(i, true);
-                wrappedLines = this._wrapLine(ctx, lines[i], i, lineIsBullet);
-                wrapped = wrapped.concat(wrappedLines);
-                for (j = 0; j < wrappedLines.length; j++) {
-                    this.bulletMapWrap.push(lineIsBullet);
-                }
+                wrapped = wrapped.concat(this._wrapLine(ctx, lines[i], i));
             }
             return wrapped;
         },
@@ -12394,18 +12364,8 @@ fabric.util.object.extend(fabric.IText.prototype, {
             }
             return width;
         },
-        getBulletSpace: function(lineIndex, wrapped) {
-            var bulletLevel = this.isLineBullet(lineIndex, wrapped);
-            return bulletLevel * 2 * this.fontSize;
-        },
-        getBulletText: function(i) {
-            return i ? "" : "@";
-        },
-        isLineBullet: function(i, wrappedLine) {
-            return wrappedLine ? this.bulletMapWrap[i] : this.bulletMap[i];
-        },
         _wrapLine: function(ctx, text, lineIndex) {
-            var bulletSpace = this.getBulletSpace(lineIndex), lineWidth = bulletSpace, lines = [], line = "", words = text.split(" "), word = "", offset = 0, infix = " ", wordWidth = 0, infixWidth = 0, largestWordWidth = 0, lineJustStarted = true, additionalSpace = this._getWidthOfCharSpacing();
+            var lineWidth = 0, lines = [], line = "", words = text.split(" "), word = "", offset = 0, infix = " ", wordWidth = 0, infixWidth = 0, largestWordWidth = 0, lineJustStarted = true, additionalSpace = this._getWidthOfCharSpacing();
             for (var i = 0; i < words.length; i++) {
                 word = words[i];
                 wordWidth = this._measureText(ctx, word, lineIndex, offset);
@@ -12414,7 +12374,7 @@ fabric.util.object.extend(fabric.IText.prototype, {
                 if (lineWidth >= this.width && !lineJustStarted) {
                     lines.push(line);
                     line = "";
-                    lineWidth = wordWidth + bulletSpace;
+                    lineWidth = wordWidth;
                     lineJustStarted = true;
                 } else {
                     lineWidth += additionalSpace;
@@ -12481,7 +12441,7 @@ fabric.util.object.extend(fabric.IText.prototype, {
             };
         },
         _getCursorBoundariesOffsets: function(chars, typeOfBoundaries) {
-            var cursorLocation = this.get2DCursorLocation(), topOffset = 0, leftOffset = this.isLineBullet(cursorLocation.lineIndex) ? this.getBulletSpace() : 0, lineChars = this._textLines[cursorLocation.lineIndex].split(""), lineLeftOffset = this._getLineLeftOffset(this._getLineWidth(this.ctx, cursorLocation.lineIndex));
+            var topOffset = 0, leftOffset = 0, cursorLocation = this.get2DCursorLocation(), lineChars = this._textLines[cursorLocation.lineIndex].split(""), lineLeftOffset = this._getLineLeftOffset(this._getLineWidth(this.ctx, cursorLocation.lineIndex));
             for (var i = 0; i < cursorLocation.charIndex; i++) {
                 leftOffset += this._getWidthOfChar(this.ctx, lineChars[i], cursorLocation.lineIndex, i);
             }
