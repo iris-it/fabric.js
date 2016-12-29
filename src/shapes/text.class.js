@@ -346,6 +346,21 @@
      */
     charSpacing:             0,
 
+    /* proptotype */
+    bulletMap: [],
+
+    getBulletSpace: function() {
+      return 20;
+    },
+
+    getBulletText: function(i) {
+      return i ? '' : '@';
+    },
+
+    isLineBullet: function(i, rawLine) {
+      return rawLine ? this.bulletMap[i] : this.bulletMapWrap[i];
+    },
+
     /**
      * Constructor
      * @param {String} text Text string
@@ -517,6 +532,9 @@
       // short-circuit
       var lineWidth = this._getLineWidth(ctx, lineIndex);
       if (this.textAlign !== 'justify' || this.width < lineWidth) {
+        if (this.isLineBullet(lineIndex)) {
+          left += this.getBulletSpace();
+        }
         this._renderChars(method, ctx, line, left, top, lineIndex);
         return;
       }

@@ -230,12 +230,17 @@
      * @returns {Array} Array of lines
      */
     _wrapText: function(ctx, text) {
-      var lines = text.split(this._reNewline), wrapped = [], i;
+      var lines = text.split(this._reNewline), wrapped = [], i, wrappedLines, lineIsBullet, j;
+      this.bulletMapWrap = [];
 
       for (i = 0; i < lines.length; i++) {
-        wrapped = wrapped.concat(this._wrapLine(ctx, lines[i], i));
+        lineIsBullet = this.isLineBullet(i, true);
+        wrappedLines = this._wrapLine(ctx, lines[i], i, lineIsBullet);
+        wrapped = wrapped.concat(wrappedLines);
+        for (j = 0; j < wrappedLines.length; j++) {
+          this.bulletMapWrap.push(lineIsBullet);
+        }
       }
-
       return wrapped;
     },
 
@@ -258,6 +263,18 @@
       return width;
     },
 
+    getBulletSpace: function() {
+      return 20;
+    },
+
+    getBulletText: function(i) {
+      return i ? '' : '@';
+    },
+
+    isLineBullet: function(i, rawLine) {
+      return rawLine ? this.bulletMap[i] : this.bulletMapWrap[i];
+    },
+
     /**
      * Wraps a line of text using the width of the Textbox and a context.
      * @param {CanvasRenderingContext2D} ctx Context to use for measurements
@@ -266,8 +283,8 @@
      * @returns {Array} Array of line(s) into which the given text is wrapped
      * to.
      */
-    _wrapLine: function(ctx, text, lineIndex) {
-      var lineWidth        = 0,
+    _wrapLine: function(ctx, text, lineIndex, bullet) {
+      var lineWidth        = bullet ? 0 : this.getBulletSpace(),
           lines            = [],
           line             = '',
           words            = text.split(' '),
@@ -291,7 +308,7 @@
         if (lineWidth >= this.width && !lineJustStarted) {
           lines.push(line);
           line = '';
-          lineWidth = wordWidth;
+          lineWidth = wordWidth + bullet ? 0 : this.getBulletSpace();
           lineJustStarted = true;
         }
         else {
@@ -406,9 +423,9 @@
      * @returns {Object} Object with 'top', 'left', and 'lineLeft' properties set.
      */
     _getCursorBoundariesOffsets: function(chars, typeOfBoundaries) {
-      var topOffset      = 0,
-          leftOffset     = 0,
-          cursorLocation = this.get2DCursorLocation(),
+      var cursorLocation = this.get2DCursorLocation(),
+          topOffset      = 0,
+          leftOffset     = this.isLineBullet(cursorLocation.lineIndex) ? this.getBulletSpace() : 0,
           lineChars      = this._textLines[cursorLocation.lineIndex].split(''),
           lineLeftOffset = this._getLineLeftOffset(this._getLineWidth(this.ctx, cursorLocation.lineIndex));
 
