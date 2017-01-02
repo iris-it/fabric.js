@@ -585,16 +585,17 @@
      * @param {Object} [options] Object with width/height properties
      */
     _setWidthHeight: function(options) {
+      var element = this.getElement();
       this.width = 'width' in options
         ? options.width
-        : (this.getElement()
-            ? this.getElement().width || 0
+        : (element
+            ? element.width || element.naturalWidth || 300
             : 0);
 
       this.height = 'height' in options
         ? options.height
-        : (this.getElement()
-            ? this.getElement().height || 0
+        : (element
+            ? element.height || element.naturalHeight || 150
             : 0);
     },
 
