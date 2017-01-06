@@ -471,10 +471,10 @@
      * @return {Number} Maximum width of fabric.Text object
      */
     _getTextWidth: function(ctx) {
-      var maxWidth = this._getLineWidth(ctx, 0) + this.getBulletSpace(0);
+      var maxWidth = this._getLineWidth(ctx, 0);
 
       for (var i = 1, len = this._textLines.length; i < len; i++) {
-        var currentLineWidth = this._getLineWidth(ctx, i) + this.getBulletSpace(i);
+        var currentLineWidth = this._getLineWidth(ctx, i);
         if (currentLineWidth > maxWidth) {
           maxWidth = currentLineWidth;
         }
@@ -791,8 +791,9 @@
           additionalSpace = 0, charCount, finalWidth;
       if (this.charSpacing !== 0) {
         charCount = line.split('').length;
-        additionalSpace = (charCount - 1) * this._getWidthOfCharSpacing();
+        additionalSpace += (charCount - 1) * this._getWidthOfCharSpacing();
       }
+      additionalSpace += this.getBulletSpace(lineIndex);
       finalWidth = width + additionalSpace;
       return finalWidth > 0 ? finalWidth : 0;
     },

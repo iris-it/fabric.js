@@ -172,6 +172,15 @@
       return lineStyle ? lineStyle.bulletLevel : false;
     },
 
+    getBulletSpace: function(lineIndex) {
+      var bulletLevel = this.isLineBullet(lineIndex) || 0;
+      return bulletLevel * this.fontSize;
+    },
+
+    getBulletText: function() {
+      return '\u2022';
+    },
+
     /**
      * Constructor
      * @param {String} text Text string
@@ -515,7 +524,7 @@
 
       for (var i = 0; i < this.selectionStart; i++) {
         if (chars[i] === '\n') {
-          leftOffset = 0;
+          leftOffset = this.getBulletSpace(lineIndex);
           topOffset += this._getHeightOfLine(this.ctx, lineIndex);
 
           lineIndex++;
@@ -1084,6 +1093,7 @@
       if (this.charSpacing !== 0) {
         width -= this._getWidthOfCharSpacing();
       }
+      width += this.getBulletSpace(lineIndex);
       this._isMeasuring = false;
       return width > 0 ? width : 0;
     },

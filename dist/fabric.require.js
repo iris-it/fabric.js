@@ -10218,9 +10218,9 @@ fabric.Image.filters.BaseFilter = fabric.util.createClass({
             return this._getHeightOfSingleLine() + (this._textLines.length - 1) * this._getHeightOfLine();
         },
         _getTextWidth: function(ctx) {
-            var maxWidth = this._getLineWidth(ctx, 0) + this.getBulletSpace(0);
+            var maxWidth = this._getLineWidth(ctx, 0);
             for (var i = 1, len = this._textLines.length; i < len; i++) {
-                var currentLineWidth = this._getLineWidth(ctx, i) + this.getBulletSpace(i);
+                var currentLineWidth = this._getLineWidth(ctx, i);
                 if (currentLineWidth > maxWidth) {
                     maxWidth = currentLineWidth;
                 }
@@ -10395,8 +10395,9 @@ fabric.Image.filters.BaseFilter = fabric.util.createClass({
             var line = this._textLines[lineIndex], width = ctx.measureText(line).width, additionalSpace = 0, charCount, finalWidth;
             if (this.charSpacing !== 0) {
                 charCount = line.split("").length;
-                additionalSpace = (charCount - 1) * this._getWidthOfCharSpacing();
+                additionalSpace += (charCount - 1) * this._getWidthOfCharSpacing();
             }
+            additionalSpace += this.getBulletSpace(lineIndex);
             finalWidth = width + additionalSpace;
             return finalWidth > 0 ? finalWidth : 0;
         },
@@ -10609,6 +10610,13 @@ fabric.Image.filters.BaseFilter = fabric.util.createClass({
             var lineStyle = this.styles[i];
             return lineStyle ? lineStyle.bulletLevel : false;
         },
+        getBulletSpace: function(lineIndex) {
+            var bulletLevel = this.isLineBullet(lineIndex) || 0;
+            return bulletLevel * this.fontSize;
+        },
+        getBulletText: function() {
+            return "•";
+        },
         initialize: function(text, options) {
             this.styles = options ? options.styles || {} : {};
             this.callSuper("initialize", text, options);
@@ -10803,7 +10811,7 @@ fabric.Image.filters.BaseFilter = fabric.util.createClass({
             var lineLeftOffset = 0, lineIndex = 0, charIndex = 0, topOffset = 0, leftOffset = 0, boundaries;
             for (var i = 0; i < this.selectionStart; i++) {
                 if (chars[i] === "\n") {
-                    leftOffset = 0;
+                    leftOffset = this.getBulletSpace(lineIndex);
                     topOffset += this._getHeightOfLine(this.ctx, lineIndex);
                     lineIndex++;
                     charIndex = 0;
@@ -11098,6 +11106,7 @@ fabric.Image.filters.BaseFilter = fabric.util.createClass({
             if (this.charSpacing !== 0) {
                 width -= this._getWidthOfCharSpacing();
             }
+            width += this.getBulletSpace(lineIndex);
             this._isMeasuring = false;
             return width > 0 ? width : 0;
         },
