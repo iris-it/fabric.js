@@ -524,7 +524,7 @@
 
       for (var i = 0; i < this.selectionStart; i++) {
         if (chars[i] === '\n') {
-          leftOffset = this.getBulletSpace(lineIndex);
+          leftOffset = this.getBulletSpace(lineIndex + 1);
           topOffset += this._getHeightOfLine(this.ctx, lineIndex);
 
           lineIndex++;
@@ -595,17 +595,15 @@
           startLine = start.lineIndex,
           endLine = end.lineIndex;
       for (var i = startLine; i <= endLine; i++) {
-        var lineOffset = this._getLineLeftOffset(this._getLineWidth(ctx, i)) || 0,
+        var lineOffset = (this._getLineLeftOffset(this._getLineWidth(ctx, i)) || 0),
             lineHeight = this._getHeightOfLine(this.ctx, i),
             realLineHeight = 0, boxWidth = 0, line = this._textLines[i];
 
         if (i === startLine) {
+          lineOffset = boundaries.leftOffset;
           for (var j = 0, len = line.length; j < len; j++) {
             if (j >= start.charIndex && (i !== endLine || j < end.charIndex)) {
               boxWidth += this._getWidthOfChar(ctx, line[j], i, j);
-            }
-            if (j < start.charIndex) {
-              lineOffset += this._getWidthOfChar(ctx, line[j], i, j);
             }
           }
           if (j === line.length) {
@@ -619,6 +617,7 @@
           for (var j2 = 0, j2len = end.charIndex; j2 < j2len; j2++) {
             boxWidth += this._getWidthOfChar(ctx, line[j2], i, j2);
           }
+          boxWidth += this.getBulletSpace(i);
           if (end.charIndex === line.length) {
             boxWidth -= this._getWidthOfCharSpacing();
           }

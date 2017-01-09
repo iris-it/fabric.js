@@ -265,15 +265,13 @@
 
     getBulletSpace: function(lineIndex, wrapped) {
       var bulletLevel = this.isLineBullet(lineIndex, wrapped);
-      return bulletLevel * 2 * this.fontSize;
+      return bulletLevel * this.fontSize;
     },
 
-    getBulletText: function(i) {
-      return i ? '' : '@';
-    },
-
-    isLineBullet: function(i, wrappedLine) {
-      return wrappedLine ? this.bulletMapWrap[i] : this.bulletMap[i];
+    isLineBullet: function(i, notWrapped) {
+      var lineNumber = !notWrapped && this._styleMap ? this._styleMap[i].line : i;
+      var lineStyle = this.styles[lineNumber];
+      return lineStyle ? lineStyle.bulletLevel : false;
     },
 
     /**
@@ -285,7 +283,7 @@
      * to.
      */
     _wrapLine: function(ctx, text, lineIndex) {
-      var bulletSpace      = this.getBulletSpace(lineIndex),
+      var bulletSpace      = this.getBulletSpace(lineIndex, true),
           lineWidth        = bulletSpace,
           lines            = [],
           line             = '',
@@ -427,7 +425,7 @@
     _getCursorBoundariesOffsets: function(chars, typeOfBoundaries) {
       var cursorLocation = this.get2DCursorLocation(),
           topOffset      = 0,
-          leftOffset     = this.isLineBullet(cursorLocation.lineIndex) ? this.getBulletSpace() : 0,
+          leftOffset     = this.getBulletSpace(0),
           lineChars      = this._textLines[cursorLocation.lineIndex].split(''),
           lineLeftOffset = this._getLineLeftOffset(this._getLineWidth(this.ctx, cursorLocation.lineIndex));
 

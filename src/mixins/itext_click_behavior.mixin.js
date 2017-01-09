@@ -177,7 +177,7 @@ fabric.util.object.extend(fabric.IText.prototype, /** @lends fabric.IText.protot
       height += this._getHeightOfLine(this.ctx, i) * this.scaleY;
 
       var widthOfLine = this._getLineWidth(this.ctx, i),
-          lineLeftOffset = this._getLineLeftOffset(widthOfLine);
+          lineLeftOffset = this._getLineLeftOffset(widthOfLine) + this.getBulletSpace(i);
 
       width = lineLeftOffset * this.scaleX;
 
